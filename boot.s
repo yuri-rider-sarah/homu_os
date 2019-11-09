@@ -65,9 +65,32 @@ bits 16
   mov ax, 0x4F02
   int 0x10
   cmp ax, 0x004F
-  je .load_kernel
+  je .enable_a20
   mov [.int10_fail_digit], byte '2'
   mov si, .int10_fail
+  call .print_string
+  hlt
+
+.enable_a20:
+  mov ax, 0x2403
+  int 0x15
+  jc .a20_failed
+  test ah, ah
+  jnz .a20_failed
+  mov ax, 0x2402
+  int 0x15
+  jc .a20_failed
+  test ah, ah
+  jnz .a20_failed
+  cmp al, 0x01
+  je .load_kernel
+  mov ax, 0x2401
+  int 0x15
+  jc .a20_failed
+  test ah, ah
+  jz .load_kernel
+.a20_failed:
+  mov si, .int15_fail
   call .print_string
   hlt
 
@@ -132,6 +155,7 @@ align 8
 .int10_fail_digit: db `0 failed\r\n\0`
 .int13_ext_fail: db `INT 13h extensions not supported\r\n\0`
 .int13_fail: db `INT 13h failed\r\n\0`
+.int15_fail: db `INT 15h failed\r\n\0`
 
 ; Prints string located in SI.
 .print_string:
