@@ -9,6 +9,7 @@ OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.s,%.o,$(wildcard *.s)
 
 $(TARGET): $(OBJECTS)
 	$(CC) $(LDFLAGS) -T linker.ld $(OBJECTS) -o $@
+	truncate -s 8704 $(TARGET)
 
 boot.o: boot.s
 	$(AS) $< -f elf32 -o $@

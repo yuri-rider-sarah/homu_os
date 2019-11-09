@@ -1,18 +1,13 @@
 #include <stdint.h>
 
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+
 void kernel_main(void) {
-    *(uint8_t *)0xB8000 = 'H';
-    *(uint8_t *)0xB8001 = 0x05;
-    *(uint8_t *)0xB8002 = 'o';
-    *(uint8_t *)0xB8003 = 0x05;
-    *(uint8_t *)0xB8004 = 'm';
-    *(uint8_t *)0xB8005 = 0x05;
-    *(uint8_t *)0xB8006 = 'u';
-    *(uint8_t *)0xB8007 = 0x05;
-    *(uint8_t *)0xB8008 = 'O';
-    *(uint8_t *)0xB8009 = 0x05;
-    *(uint8_t *)0xB800A = 'S';
-    *(uint8_t *)0xB800B = 0x05;
+    u8 *fb = (u8 *)*(u32 *)0x0728;
+    for (u32 i = 0; i < (*(u16 *)0x0732 * *(u16 *)0x0714); i++)
+        fb[i] = i;
     while (1)
         ;
 }

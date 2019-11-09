@@ -1,4 +1,9 @@
-SECTION .boot
+section .boot
+
+%define .controller_info 0x0500
+%define .video_modes_ptr 0x050E
+%define .mode_info 0x0700
+%define .mode_res 0x0712 ; horizontal before vertical
 
 bits 16
 
@@ -10,6 +15,63 @@ bits 16
   mov sp, 0x7C00
   push dx
 
+  clc
+  mov ax, 0x4F00
+  mov di, .controller_info
+  int 0x10
+  cmp ax, 0x004F
+  je .got_controller_info
+  mov si, .int10_fail
+  call .print_string
+  hlt
+.got_controller_info:
+  cld
+  mov si, [.video_modes_ptr]
+  mov bx, 0xFFFF ; best supported mode
+  xor edx, edx ; resolution of best mode - vertical less significant than horizontal
+.video_mode_loop:
+  lodsw
+; or ax, 0x4000
+  cmp ax, 0xFFFF
+  je .got_video_mode
+  mov cx, ax
+  mov ax, 0x4F01
+  mov di, .mode_info
+  int 0x10
+  cmp ax, 0x004F
+  jne .video_mode_loop
+  test [.mode_info], word 0x0010
+  jz .video_mode_loop
+  mov eax, [.mode_res]
+  ror eax, 16 ; swap horizontal and vertical resolution
+  cmp eax, edx
+  jna .video_mode_loop
+  mov bx, cx
+  mov edx, eax
+  jmp .video_mode_loop
+.got_video_mode:
+  mov cx, bx
+  mov ax, 0x4F01
+  mov di, .mode_info
+  int 0x10
+  cmp ax, 0x004F
+  je .got_mode_info
+  mov [.int10_fail_digit], byte '1'
+  mov si, .int10_fail
+  call .print_string
+  hlt
+.got_mode_info:
+  or bx, 0x4000
+  mov ax, 0x4F02
+  int 0x10
+  cmp ax, 0x004F
+  je .load_kernel
+  mov [.int10_fail_digit], byte '2'
+  mov si, .int10_fail
+  call .print_string
+  hlt
+
+.load_kernel:
   clc
   mov ah, 0x41
   mov bx, 0x55AA
@@ -66,6 +128,8 @@ align 8
   db 0xCF
   db 0x00
 
+.int10_fail: db `INT 10h AX=0x4F0`
+.int10_fail_digit: db `0 failed\r\n\0`
 .int13_ext_fail: db `INT 13h extensions not supported\r\n\0`
 .int13_fail: db `INT 13h failed\r\n\0`
 
@@ -73,15 +137,18 @@ align 8
 .print_string:
   cld
   mov ah, 0x0E
+.print_string_loop:
   lodsb
   test al, al
   jz .end
   int 0x10
-  jmp .print_string
+  jmp .print_string_loop
 .end:
   ret
 
 bits 32
+
+extern kernel_main
 
 .protected_mode_init:
   mov ax, 0x10
@@ -90,7 +157,6 @@ bits 32
   mov fs, ax
   mov gs, ax
   mov ss, ax
-  extern kernel_main
   call kernel_main
   hlt
 
