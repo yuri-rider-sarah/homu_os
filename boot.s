@@ -31,7 +31,6 @@ bits 16
   xor edx, edx ; resolution of best mode - vertical less significant than horizontal
 .video_mode_loop:
   lodsw
-; or ax, 0x4000
   cmp ax, 0xFFFF
   je .got_video_mode
   mov cx, ax
@@ -40,7 +39,7 @@ bits 16
   int 0x10
   cmp ax, 0x004F
   jne .video_mode_loop
-  test [.mode_info], word 0x0010
+  test [.mode_info], word 0x0099
   jz .video_mode_loop
   mov eax, [.mode_res]
   ror eax, 16 ; swap horizontal and vertical resolution
