@@ -4,6 +4,7 @@ section .boot
 %define .video_modes_ptr 0x050E
 %define .mode_info 0x0700
 %define .mode_res 0x0712 ; horizontal before vertical
+%define .mode_bpp 0x0719
 
 bits 16
 
@@ -16,6 +17,7 @@ bits 16
   push dx
 
   clc
+  mov [.controller_info], dword "VBE2"
   mov ax, 0x4F00
   mov di, .controller_info
   int 0x10
@@ -27,8 +29,9 @@ bits 16
 .got_controller_info:
   cld
   mov si, [.video_modes_ptr]
-  mov bx, 0xFFFF ; best supported mode
+  mov bp, 0xFFFF ; best supported mode
   xor edx, edx ; resolution of best mode - vertical less significant than horizontal
+  xor bl, bl ; bpp of best mode
 .video_mode_loop:
   lodsw
   cmp ax, 0xFFFF
@@ -44,12 +47,15 @@ bits 16
   mov eax, [.mode_res]
   ror eax, 16 ; swap horizontal and vertical resolution
   cmp eax, edx
-  jna .video_mode_loop
-  mov bx, cx
+  jb .video_mode_loop
+  cmp [.mode_bpp], bl
+  jb .video_mode_loop
+  mov bp, cx
   mov edx, eax
+  mov bl, [.mode_bpp]
   jmp .video_mode_loop
 .got_video_mode:
-  mov cx, bx
+  mov cx, bp
   mov ax, 0x4F01
   mov di, .mode_info
   int 0x10
@@ -60,6 +66,7 @@ bits 16
   call .print_string
   hlt
 .got_mode_info:
+  mov bx, bp
   or bx, 0x4000
   mov ax, 0x4F02
   int 0x10
