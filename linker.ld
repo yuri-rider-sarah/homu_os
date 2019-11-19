@@ -12,13 +12,16 @@ SECTIONS {
     .text : {
         *(.text)
     } >kernel
+    .rodata : {
+        *(.rodata)
+    } >kernel
     .data : {
         *(.data)
     } >kernel
     .bss : {
+        *(COMMON)
         *(.bss)
     } >kernel
     /DISCARD/ : {
-        *(*)
     }
 }
