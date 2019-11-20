@@ -26,19 +26,31 @@ u16 char_height;
 u32 cursor_x = 0;
 u32 cursor_y = 0;
 
+void print_char(uint8_t c) {
+    if (c == '\n') {
+        cursor_y = (cursor_y + 1) % char_height;
+        cursor_x = 0;
+    } else if (c >= ' ' && c <= '~') {
+        for (u32 y = 0; y < 13; y++)
+            for (u32 x = 0; x < 7; x++)
+                for (u32 j = 0; j < bytes_per_pixel; j++)
+                    fb[(cursor_y * 13 + y) * pitch + (cursor_x * 7 + x) * bytes_per_pixel + j] =
+                        ((font_chars[c - ' '][y] << x) & 0x80) ? 0xFF : 0x00;
+        cursor_x = (cursor_x + 1) % char_width;
+    }
+}
+
 void print_string(String str) {
-    for (size_t i = 0; i < str.len; i++) {
-        if (str.chars[i] == '\n') {
-            cursor_y = (cursor_y + 1) % char_height;
-            cursor_x = 0;
-        } else if (str.chars[i] >= ' ' && str.chars[i] <= '~') {
-            for (u32 y = 0; y < 13; y++)
-                for (u32 x = 0; x < 7; x++)
-                    for (u32 j = 0; j < bytes_per_pixel; j++)
-                        fb[(cursor_y * 13 + y) * pitch + (cursor_x * 7 + x) * bytes_per_pixel + j] =
-                            ((font_chars[str.chars[i] - ' '][y] << x) & 0x80) ? 0xFF : 0x00;
-            cursor_x = (cursor_x + 1) % char_width;
-        }
+    for (size_t i = 0; i < str.len; i++)
+        print_char(str.chars[i]);
+}
+
+void print_hex(u64 n, u32 digits) {
+    print_char('0');
+    print_char('x');
+    for (i32 shift = 4 * (digits - 1); shift >= 0; shift -= 4) {
+        i32 d = (n >> shift) & 0xF;
+        print_char(d < 10 ? d + '0' : d - 10 + 'A');
     }
 }
 
@@ -69,6 +81,10 @@ void kernel_main(void) {
     }
     print_string(STR("HomuOS\n"));
     print_string(STR("Hello, world!\n"));
+    print_hex(0x01234567, 8);
+    print_char('\n');
+    print_hex(0x89ABCDEF, 16);
+    print_char('\n');
     while (1)
         ;
 }
