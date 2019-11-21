@@ -8,6 +8,13 @@ typedef struct String {
 
 #define STR(s) ((String){sizeof(s) - 1, (uint8_t *)s})
 
+typedef struct Memory_Region {
+    u64 base;
+    u64 len;
+    u32 type;
+    u32 attrs;
+} __attribute__((packed)) Memory_Region;
+
 u8 *fb;
 u16 pitch;
 u16 width;
@@ -79,12 +86,17 @@ void kernel_main(void) {
             }
         }
     }
-    print_string(STR("HomuOS\n"));
-    print_string(STR("Hello, world!\n"));
-    print_hex(0x01234567, 8);
-    print_char('\n');
-    print_hex(0x89ABCDEF, 16);
-    print_char('\n');
+    print_string(STR("Detected memory:\n"));
+    u16 memory_ranges_count = *(u16 *)0x08FE / 24;
+    Memory_Region *memory_ranges = (Memory_Region *)0x0900;
+    for (u16 i = 0; i < memory_ranges_count; i++) {
+        print_hex(memory_ranges[i].base, 16);
+        print_char(' ');
+        print_hex(memory_ranges[i].len, 16);
+        print_char(' ');
+        print_hex(memory_ranges[i].type, 8);
+        print_char('\n');
+    }
     while (1)
         ;
 }

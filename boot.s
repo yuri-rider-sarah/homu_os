@@ -5,6 +5,8 @@ section .boot
 %define .mode_info 0x0700
 %define .mode_res 0x0712 ; horizontal before vertical
 %define .mode_bpp 0x0719
+%define .memory_ranges_count 0x08FE ; in bytes
+%define .memory_ranges 0x0900
 
 bits 16
 
@@ -15,8 +17,73 @@ bits 16
   mov ss, ax
   mov sp, 0x7C00
   push dx
-
   clc
+
+.enable_a20:
+  mov ax, 0x2403
+  int 0x15
+  jc .int15_failed
+  test ah, ah
+  jnz .int15_failed
+  mov ax, 0x2402
+  int 0x15
+  jc .int15_failed
+  test ah, ah
+  jnz .int15_failed
+  cmp al, 0x01
+  je .detect_memory
+  mov ax, 0x2401
+  int 0x15
+  jc .int15_failed
+  test ah, ah
+  jz .detect_memory
+.int15_failed:
+  mov si, .int15_fail
+  call .print_string
+  hlt
+
+.detect_memory:
+  mov si, .int15_failed
+  mov edx, 0x534D4150
+  mov ebx, 0
+  mov di, .memory_ranges
+.detect_memory_loop:
+  mov eax, 0xE820
+  mov ecx, 24
+  int 0x15
+  jnc .int15_no_carry
+  jmp si
+.int15_no_carry:
+  cmp eax, 0x534D4150
+  jne .int15_failed
+  mov si, .got_memory
+  add di, 24
+  test ebx, ebx
+  jnz .detect_memory_loop
+.got_memory:
+  sub di, .memory_ranges
+  mov [.memory_ranges_count], di
+
+.load_kernel:
+  mov ah, 0x41
+  mov bx, 0x55AA
+  mov dl, 0x80
+  int 0x13
+  jnc .int13_supported
+  mov si, .int13_ext_fail
+  call .print_string
+  hlt
+.int13_supported:
+  pop dx
+  mov ah, 0x42
+  mov si, .int13_dap
+  int 0x13
+  jnc .get_video_modes
+  mov si, .int13_fail
+  call .print_string
+  hlt
+
+.get_video_modes:
   mov [.controller_info], dword "VBE2"
   mov ax, 0x4F00
   mov di, .controller_info
@@ -71,55 +138,13 @@ bits 16
   mov ax, 0x4F02
   int 0x10
   cmp ax, 0x004F
-  je .enable_a20
+  je .boot
   mov [.int10_fail_digit], byte '2'
   mov si, .int10_fail
   call .print_string
   hlt
 
-.enable_a20:
-  mov ax, 0x2403
-  int 0x15
-  jc .a20_failed
-  test ah, ah
-  jnz .a20_failed
-  mov ax, 0x2402
-  int 0x15
-  jc .a20_failed
-  test ah, ah
-  jnz .a20_failed
-  cmp al, 0x01
-  je .load_kernel
-  mov ax, 0x2401
-  int 0x15
-  jc .a20_failed
-  test ah, ah
-  jz .load_kernel
-.a20_failed:
-  mov si, .int15_fail
-  call .print_string
-  hlt
-
-.load_kernel:
-  clc
-  mov ah, 0x41
-  mov bx, 0x55AA
-  mov dl, 0x80
-  int 0x13
-  jnc .int13_supported
-  mov si, .int13_ext_fail
-  call .print_string
-  hlt
-.int13_supported:
-  pop dx
-  mov ah, 0x42
-  mov si, .int13_dap
-  int 0x13
-  jnc .loaded_kernel
-  mov si, .int13_fail
-  call .print_string
-  hlt
-.loaded_kernel:
+.boot:
   cli
   lgdt [.gdtr]
   mov eax, cr0
