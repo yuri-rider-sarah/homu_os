@@ -8,6 +8,15 @@ section .boot
 %define .memory_ranges_count 0x08FE ; in bytes
 %define .memory_ranges 0x0900
 
+; Error codes:
+; 0 - Failed to enable A20 gate
+; 1 - Failed to detect memory
+; 2 - INT 13h extensions not supported
+; 3 - Failed to load kernel
+; 4 - Failed to get controller info
+; 5 - Failed to get mode info
+; 6 - Failed to set video mode
+
 bits 16
 
   cli
@@ -38,12 +47,11 @@ bits 16
   test ah, ah
   jz .detect_memory
 .int15_failed:
-  mov si, .int15_fail
-  call .print_string
-  hlt
+  mov dl, '0'
+  jmp .error
 
 .detect_memory:
-  mov si, .int15_failed
+  mov si, .detect_memory_failed
   mov edx, 0x534D4150
   mov ebx, 0
   mov di, .memory_ranges
@@ -55,7 +63,7 @@ bits 16
   jmp si
 .int15_no_carry:
   cmp eax, 0x534D4150
-  jne .int15_failed
+  jne .detect_memory_failed
   mov si, .got_memory
   add di, 24
   test ebx, ebx
@@ -63,6 +71,10 @@ bits 16
 .got_memory:
   sub di, .memory_ranges
   mov [.memory_ranges_count], di
+  jmp .load_kernel
+.detect_memory_failed:
+  mov dl, '1'
+  jmp .error
 
 .load_kernel:
   mov ah, 0x41
@@ -70,18 +82,16 @@ bits 16
   mov dl, 0x80
   int 0x13
   jnc .int13_supported
-  mov si, .int13_ext_fail
-  call .print_string
-  hlt
+  mov dl, '2'
+  jmp .error
 .int13_supported:
   pop dx
   mov ah, 0x42
   mov si, .int13_dap
   int 0x13
   jnc .get_video_modes
-  mov si, .int13_fail
-  call .print_string
-  hlt
+  mov dl, '3'
+  jmp .error
 
 .get_video_modes:
   mov [.controller_info], dword "VBE2"
@@ -90,9 +100,8 @@ bits 16
   int 0x10
   cmp ax, 0x004F
   je .got_controller_info
-  mov si, .int10_fail
-  call .print_string
-  hlt
+  mov dl, '4'
+  jmp .error
 .got_controller_info:
   cld
   mov si, [.video_modes_ptr]
@@ -122,16 +131,17 @@ bits 16
   mov bl, [.mode_bpp]
   jmp .video_mode_loop
 .got_video_mode:
+  cmp bp, 0xFFFF
+  je .get_mode_info_failed
   mov cx, bp
   mov ax, 0x4F01
   mov di, .mode_info
   int 0x10
   cmp ax, 0x004F
   je .got_mode_info
-  mov [.int10_fail_digit], byte '1'
-  mov si, .int10_fail
-  call .print_string
-  hlt
+.get_mode_info_failed:
+  mov dl, '5'
+  jmp .error
 .got_mode_info:
   mov bx, bp
   or bx, 0x4000
@@ -139,10 +149,8 @@ bits 16
   int 0x10
   cmp ax, 0x004F
   je .boot
-  mov [.int10_fail_digit], byte '2'
-  mov si, .int10_fail
-  call .print_string
-  hlt
+  mov dl, '6'
+  jmp .error
 
 .boot:
   cli
@@ -182,24 +190,24 @@ align 8
   db 0xCF
   db 0x00
 
-.int10_fail: db `INT 10h AX=0x4F0`
-.int10_fail_digit: db `0 failed\r\n\0`
-.int13_ext_fail: db `INT 13h extensions not supported\r\n\0`
-.int13_fail: db `INT 13h failed\r\n\0`
-.int15_fail: db `INT 15h failed\r\n\0`
+.error_msg: db `Error \0`
 
-; Prints string located in SI.
-.print_string:
+; Halts with error code in dl displayed
+.error:
   cld
+  mov si, .error_msg
   mov ah, 0x0E
-.print_string_loop:
+.print_loop:
   lodsb
   test al, al
-  jz .end
+  jz .end_print
   int 0x10
-  jmp .print_string_loop
-.end:
-  ret
+  jmp .print_loop
+.end_print:
+  mov al, dl
+  int 0x10
+  hlt
+  jmp .end_print
 
 bits 32
 
