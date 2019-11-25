@@ -9,14 +9,15 @@ section .boot
 %define .memory_ranges 0x0900
 
 ; Error codes:
-; 0 - Failed to enable A20 gate
-; 1 - Failed to detect memory
-; 2 - INT 13h extensions not supported
-; 3 - Failed to load kernel
-; 4 - Failed to get controller info
-; 5 - Failed to find video mode
-; 6 - Failed to get mode info
-; 7 - Failed to set video mode
+; 0 - Long mode not supported
+; 1 - Failed to enable A20 gate
+; 2 - Failed to detect memory
+; 3 - INT 13h extensions not supported
+; 4 - Failed to load kernel
+; 5 - Failed to get controller info
+; 6 - Failed to find video mode
+; 7 - Failed to get mode info
+; 8 - Failed to set video mode
 
 bits 16
 
@@ -28,6 +29,20 @@ bits 16
   mov sp, 0x7C00
   push dx
   clc
+
+  ; Test long mode
+  mov eax, 0x80000000
+  cpuid
+  cmp eax, 0x80000001
+  jb .no_long_mode
+  mov eax, 0x80000001
+  cpuid
+  test edx, 0x20000000
+  jnz .long_mode_available
+.no_long_mode:
+  mov dl, '0'
+  jmp .error
+.long_mode_available:
 
   ; Enable A20 line
   mov ax, 0x2403
@@ -48,7 +63,7 @@ bits 16
   test ah, ah
   jz .a20_enabled
 .int15_failed:
-  mov dl, '0'
+  mov dl, '1'
   jmp .error
 .a20_enabled:
 
@@ -75,7 +90,7 @@ bits 16
   mov [.memory_ranges_count], di
   jmp .got_memory_ranges
 .detect_memory_failed:
-  mov dl, '1'
+  mov dl, '2'
   jmp .error
 .got_memory_ranges:
 
@@ -85,7 +100,7 @@ bits 16
   mov dl, 0x80
   int 0x13
   jnc .int13_supported
-  mov dl, '2'
+  mov dl, '3'
   jmp .error
 .int13_supported:
   pop dx
@@ -93,7 +108,7 @@ bits 16
   mov si, .int13_dap
   int 0x13
   jnc .get_video_modes
-  mov dl, '3'
+  mov dl, '4'
   jmp .error
 
 .get_video_modes:
@@ -103,7 +118,7 @@ bits 16
   int 0x10
   cmp ax, 0x004F
   je .got_controller_info
-  mov dl, '4'
+  mov dl, '5'
   jmp .error
 .got_controller_info:
   cld
@@ -134,14 +149,14 @@ bits 16
   mov bl, [.mode_bpp]
   jmp .video_mode_loop
 .got_video_mode:
-  mov dl, '5'
+  mov dl, '6'
   cmp bp, 0xFFFF
   je .error
   mov cx, bp
   mov ax, 0x4F01
   mov di, .mode_info
   int 0x10
-  mov dl, '6'
+  mov dl, '7'
   cmp ax, 0x004F
   jne .error
 .got_mode_info:
@@ -151,7 +166,7 @@ bits 16
   int 0x10
   cmp ax, 0x004F
   je .boot
-  mov dl, '7'
+  mov dl, '8'
   jmp .error
 
 align 4
