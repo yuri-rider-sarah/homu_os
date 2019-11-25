@@ -70,14 +70,13 @@ void print_hex(u64 n, u32 digits) {
 
 #define PAGE_STACK_BOTTOM (u64 *)0xFFFF800040000000
 
-static const u64 *page_stack_bottom = PAGE_STACK_BOTTOM;
 static u64 *page_stack_top = PAGE_STACK_BOTTOM;
 static u64 *page_stack_capacity = PAGE_STACK_BOTTOM;
 
 void free_page(u64 page);
 
 void page_alloc_init() {
-    u64 *page_stack_pdpte = PDPTE_PTR(page_stack_bottom);
+    u64 *page_stack_pdpte = PDPTE_PTR(PAGE_STACK_BOTTOM);
     u16 memory_ranges_count = *(u16 *)LOW_MEM_PTR(0x08FE) / 24;
     MemoryRegion *memory_ranges = (MemoryRegion *)LOW_MEM_PTR(0x0900);
     for (u16 i = 0; i < memory_ranges_count; i++) {
@@ -89,7 +88,7 @@ void page_alloc_init() {
             continue;
         if (*page_stack_pdpte == 0) {
             *page_stack_pdpte = base_page << 12 | 0x003;
-            u64 *page_stack_pd = PDE_PTR(page_stack_bottom);
+            u64 *page_stack_pd = PDE_PTR(PAGE_STACK_BOTTOM);
             for (u32 i = 0; i < 0x200; i++)
                 page_stack_pd[i] = 0;
             base_page++;
@@ -140,10 +139,7 @@ void kernel_main(void) {
     bp = *(u8 *)LOW_MEM_PTR(0x0724);
 
     fb = (u8 *)(0xFFFF800080000000 | (fb_ptr & 0x1FFFFF));
-    // TODO handle alloc failure
-    // TODO blank page
-    u64 fb_pd_phys = page_alloc();
-    *PDPTE_PTR(fb) = fb_pd_phys | 0x003;
+    *PDPTE_PTR(fb) = 0x7C003;
     u64 *fb_pd = PDE_PTR(fb);
     u32 fb_first_page = fb_ptr >> 21;
     u32 fb_end_page = (fb_ptr + height * pitch + 0x1FFFFF) >> 21;
