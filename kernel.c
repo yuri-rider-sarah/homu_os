@@ -124,8 +124,6 @@ u64 page_alloc() {
 }
 
 void kernel_main(void) {
-    page_alloc_init();
-
     u32 fb_ptr = *(u32 *)LOW_MEM_PTR(0x0728);
     pitch = *(u16 *)LOW_MEM_PTR(0x0710);
     width = *(u16 *)LOW_MEM_PTR(0x0712);
@@ -141,13 +139,17 @@ void kernel_main(void) {
     fb = (u8 *)(0xFFFF800080000000 | (fb_ptr & 0x1FFFFF));
     *PDPTE_PTR(fb) = 0x7C003;
     u64 *fb_pd = PDE_PTR(fb);
-    u32 fb_first_page = fb_ptr >> 21;
-    u32 fb_end_page = (fb_ptr + height * pitch + 0x1FFFFF) >> 21;
-    // TODO handle framebuffer too large
+    u64 fb_first_page = fb_ptr >> 21;
+    u64 fb_end_page = (fb_ptr + height * pitch + 0x1FFFFF) >> 21;
+    u64 fb_pages = fb_end_page - fb_first_page;
+    if (fb_pages > 0x200)
+        fb_pages = 0x200;
     for (u32 i = 0; i < fb_end_page - fb_first_page; i++)
         fb_pd[i] = (fb_first_page + i) << 21 | 0x000183;
     for (u32 i = fb_end_page - fb_first_page; i < 0x200; i++)
         fb_pd[i] = 0;
+
+    page_alloc_init();
 
     char_width = width / 7;
     char_height = height / 13;
