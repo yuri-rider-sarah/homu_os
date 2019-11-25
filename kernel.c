@@ -6,6 +6,8 @@
 #define PDPTE_PTR(x) ((u64 *)(((u64)x >> 27 & ~0x7) | 0xFFFFFFFFFFE00000))
 #define PML4E_PTR(x) ((u64 *)(((u64)x >> 36 & ~0x7) | 0xFFFFFFFFFFFFF000))
 
+#define LOW_MEM_PTR(x) (x | 0xFFFF800000000000)
+
 typedef struct String {
     size_t len;
     uint8_t *chars;
@@ -76,8 +78,8 @@ void free_page(u64 page);
 
 void page_alloc_init() {
     u64 *page_stack_pdpte = PDPTE_PTR(page_stack_bottom);
-    u16 memory_ranges_count = *(u16 *)0x08FE / 24;
-    MemoryRegion *memory_ranges = (MemoryRegion *)0x0900;
+    u16 memory_ranges_count = *(u16 *)LOW_MEM_PTR(0x08FE) / 24;
+    MemoryRegion *memory_ranges = (MemoryRegion *)LOW_MEM_PTR(0x0900);
     for (u16 i = 0; i < memory_ranges_count; i++) {
         if (memory_ranges[i].type != 1 || memory_ranges[i].base <= 0xFFFFF) // Skip invalid ranges and low memory
             continue;
@@ -125,17 +127,17 @@ u64 page_alloc() {
 void kernel_main(void) {
     page_alloc_init();
 
-    u32 fb_ptr = *(u32 *)0x0728;
-    pitch = *(u16 *)0x0710;
-    width = *(u16 *)0x0712;
-    height = *(u16 *)0x0714;
-    bytes_per_pixel = (*(u8 *)0x0719 + 7) / 8;
-    rs = *(u8 *)0x071F;
-    rp = *(u8 *)0x0720;
-    gs = *(u8 *)0x0721;
-    gp = *(u8 *)0x0722;
-    bs = *(u8 *)0x0723;
-    bp = *(u8 *)0x0724;
+    u32 fb_ptr = *(u32 *)LOW_MEM_PTR(0x0728);
+    pitch = *(u16 *)LOW_MEM_PTR(0x0710);
+    width = *(u16 *)LOW_MEM_PTR(0x0712);
+    height = *(u16 *)LOW_MEM_PTR(0x0714);
+    bytes_per_pixel = (*(u8 *)LOW_MEM_PTR(0x0719) + 7) / 8;
+    rs = *(u8 *)LOW_MEM_PTR(0x071F);
+    rp = *(u8 *)LOW_MEM_PTR(0x0720);
+    gs = *(u8 *)LOW_MEM_PTR(0x0721);
+    gp = *(u8 *)LOW_MEM_PTR(0x0722);
+    bs = *(u8 *)LOW_MEM_PTR(0x0723);
+    bp = *(u8 *)LOW_MEM_PTR(0x0724);
 
     fb = (u8 *)(0xFFFF800080000000 | (fb_ptr & 0x1FFFFF));
     // TODO handle alloc failure
@@ -168,8 +170,8 @@ void kernel_main(void) {
     print_string(STR("Address of kernel_main: "));
     print_hex(&kernel_main, 16);
     print_char('\n');
-    u16 memory_ranges_count = *(u16 *)0x08FE / 24;
-    MemoryRegion *memory_ranges = (MemoryRegion *)0x0900;
+    u16 memory_ranges_count = *(u16 *)LOW_MEM_PTR(0x08FE) / 24;
+    MemoryRegion *memory_ranges = (MemoryRegion *)LOW_MEM_PTR(0x0900);
     print_string(STR("Detected memory:\n"));
     for (u16 i = 0; i < memory_ranges_count; i++) {
         print_hex(memory_ranges[i].base, 16);
