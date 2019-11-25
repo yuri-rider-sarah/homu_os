@@ -1,18 +1,18 @@
 TARGET = homu.bin
 AS = nasm
-CC = i686-elf-gcc
-CFLAGS = -ffreestanding -O2 -Wall -Wextra
+CC = x86_64-elf-gcc
+CFLAGS = -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -O2 -Wall -Wextra
 LDFLAGS = -ffreestanding -O2 -nostdlib -lgcc
 
 HEADERS = $(wildcard *.h)
 OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.s,%.o,$(wildcard *.s))
 
-$(TARGET): $(OBJECTS)
+$(TARGET): $(OBJECTS) linker.ld
 	$(CC) $(LDFLAGS) -T linker.ld $(OBJECTS) -o $@
-	truncate -s 8704 $(TARGET)
+	truncate -s 516096 $(TARGET) # minimum disk size that works with bochs
 
 boot.o: boot.s
-	$(AS) $< -f elf32 -o $@
+	$(AS) $< -f elf64 -o $@
 
 %.o: %.c $(HEADERS)
 	$(CC) -c $(CFLAGS) $< -o $@

@@ -1,6 +1,11 @@
 #include "types.h"
 #include "misc-fixed.h"
 
+#define PTE_PTR(x) ((u64 *)(((u64)x >> 9 & ~0x7) | 0xFFFFFF8000000000))
+#define PDE_PTR(x) ((u64 *)(((u64)x >> 18 & ~0x7) | 0xFFFFFFFFC0000000))
+#define PDPTE_PTR(x) ((u64 *)(((u64)x >> 27 & ~0x7) | 0xFFFFFFFFFFE00000))
+#define PML4E_PTR(x) ((u64 *)(((u64)x >> 36 & ~0x7) | 0xFFFFFFFFFFFFF000))
+
 typedef struct String {
     size_t len;
     uint8_t *chars;
@@ -8,12 +13,12 @@ typedef struct String {
 
 #define STR(s) ((String){sizeof(s) - 1, (uint8_t *)s})
 
-typedef struct Memory_Region {
+typedef struct MemoryRegion {
     u64 base;
     u64 len;
     u32 type;
     u32 attrs;
-} __attribute__((packed)) Memory_Region;
+} MemoryRegion;
 
 u8 *fb;
 u16 pitch;
@@ -61,8 +66,66 @@ void print_hex(u64 n, u32 digits) {
     }
 }
 
+#define PAGE_STACK_BOTTOM (u64 *)0xFFFF800040000000
+
+static const u64 *page_stack_bottom = PAGE_STACK_BOTTOM;
+static u64 *page_stack_top = PAGE_STACK_BOTTOM;
+static u64 *page_stack_capacity = PAGE_STACK_BOTTOM;
+
+void free_page(u64 page);
+
+void page_alloc_init() {
+    u64 *page_stack_pdpte = PDPTE_PTR(page_stack_bottom);
+    u16 memory_ranges_count = *(u16 *)0x08FE / 24;
+    MemoryRegion *memory_ranges = (MemoryRegion *)0x0900;
+    for (u16 i = 0; i < memory_ranges_count; i++) {
+        if (memory_ranges[i].type != 1 || memory_ranges[i].base <= 0xFFFFF) // Skip invalid ranges and low memory
+            continue;
+        u64 base_page = (memory_ranges[i].base + 0xFFF) >> 12;
+        u64 end_page = (memory_ranges[i].base + memory_ranges[i].len) >> 12;
+        if (base_page >= end_page) // Skip ranges not containing a full page
+            continue;
+        if (*page_stack_pdpte == 0) {
+            *page_stack_pdpte = base_page << 12 | 0x003;
+            u64 *page_stack_pd = PDE_PTR(page_stack_bottom);
+            for (u32 i = 0; i < 0x200; i++)
+                page_stack_pd[i] = 0;
+            base_page++;
+            if (base_page >= end_page)
+                continue;
+        }
+        for (u64 page = base_page; page < end_page; page++)
+            free_page(page << 12);
+    }
+    // TODO handle no usable memory
+}
+
+void free_page(u64 page) {
+    if (page_stack_top >= page_stack_capacity) {
+        u64 *page_stack_cap_pde = PDE_PTR(page_stack_capacity);
+        u64 *page_stack_cap_pt = PTE_PTR(page_stack_capacity);
+        if (*page_stack_cap_pde == 0) {
+            *page_stack_cap_pde = page | 0x103;
+            for (u32 i = 0; i < 0x200; i++)
+                page_stack_cap_pt[i] = 0;
+        } else {
+            *page_stack_cap_pt = page | 0x103;
+            page_stack_capacity += 0x200;
+        }
+    } else {
+        *page_stack_top++ = page;
+    }
+}
+
+u64 page_alloc() {
+    return *--page_stack_top;
+    // TODO handle lack of memory
+}
+
 void kernel_main(void) {
-    fb = (u8 *)*(u32 *)0x0728;
+    page_alloc_init();
+
+    u32 fb_ptr = *(u32 *)0x0728;
     pitch = *(u16 *)0x0710;
     width = *(u16 *)0x0712;
     height = *(u16 *)0x0714;
@@ -73,6 +136,21 @@ void kernel_main(void) {
     gp = *(u8 *)0x0722;
     bs = *(u8 *)0x0723;
     bp = *(u8 *)0x0724;
+
+    fb = (u8 *)(0xFFFF800080000000 | (fb_ptr & 0x1FFFFF));
+    // TODO handle alloc failure
+    // TODO blank page
+    u64 fb_pd_phys = page_alloc();
+    *PDPTE_PTR(fb) = fb_pd_phys | 0x003;
+    u64 *fb_pd = PDE_PTR(fb);
+    u32 fb_first_page = fb_ptr >> 21;
+    u32 fb_end_page = (fb_ptr + height * pitch + 0x1FFFFF) >> 21;
+    // TODO handle framebuffer too large
+    for (u32 i = 0; i < fb_end_page - fb_first_page; i++)
+        fb_pd[i] = (fb_first_page + i) << 21 | 0x000183;
+    for (u32 i = fb_end_page - fb_first_page; i < 0x200; i++)
+        fb_pd[i] = 0;
+
     char_width = width / 7;
     char_height = height / 13;
     for (u32 y = 0; y < height; y++) {
@@ -86,9 +164,13 @@ void kernel_main(void) {
             }
         }
     }
-    print_string(STR("Detected memory:\n"));
+
+    print_string(STR("Address of kernel_main: "));
+    print_hex(&kernel_main, 16);
+    print_char('\n');
     u16 memory_ranges_count = *(u16 *)0x08FE / 24;
-    Memory_Region *memory_ranges = (Memory_Region *)0x0900;
+    MemoryRegion *memory_ranges = (MemoryRegion *)0x0900;
+    print_string(STR("Detected memory:\n"));
     for (u16 i = 0; i < memory_ranges_count; i++) {
         print_hex(memory_ranges[i].base, 16);
         print_char(' ');
@@ -97,6 +179,23 @@ void kernel_main(void) {
         print_hex(memory_ranges[i].type, 8);
         print_char('\n');
     }
+    print_char('\n');
+    print_string(STR("Page allocation test:\n"));
+    u64 page1 = page_alloc();
+    u64 page2 = page_alloc();
+    print_hex(page1, 16);
+    print_char('\n');
+    print_hex(page2, 16);
+    print_char('\n');
+    free_page(page1);
+    free_page(page2);
+    page1 = page_alloc();
+    page2 = page_alloc();
+    print_hex(page1, 16);
+    print_char('\n');
+    print_hex(page2, 16);
+    print_char('\n');
+
     while (1)
         ;
 }

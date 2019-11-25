@@ -14,8 +14,9 @@ section .boot
 ; 2 - INT 13h extensions not supported
 ; 3 - Failed to load kernel
 ; 4 - Failed to get controller info
-; 5 - Failed to get mode info
-; 6 - Failed to set video mode
+; 5 - Failed to find video mode
+; 6 - Failed to get mode info
+; 7 - Failed to set video mode
 
 bits 16
 
@@ -28,7 +29,7 @@ bits 16
   push dx
   clc
 
-.enable_a20:
+  ; Enable A20 line
   mov ax, 0x2403
   int 0x15
   jc .int15_failed
@@ -40,17 +41,18 @@ bits 16
   test ah, ah
   jnz .int15_failed
   cmp al, 0x01
-  je .detect_memory
+  je .a20_enabled
   mov ax, 0x2401
   int 0x15
   jc .int15_failed
   test ah, ah
-  jz .detect_memory
+  jz .a20_enabled
 .int15_failed:
   mov dl, '0'
   jmp .error
+.a20_enabled:
 
-.detect_memory:
+  ; Detect memory ranges
   mov si, .detect_memory_failed
   mov edx, 0x534D4150
   mov ebx, 0
@@ -71,12 +73,13 @@ bits 16
 .got_memory:
   sub di, .memory_ranges
   mov [.memory_ranges_count], di
-  jmp .load_kernel
+  jmp .got_memory_ranges
 .detect_memory_failed:
   mov dl, '1'
   jmp .error
+.got_memory_ranges:
 
-.load_kernel:
+  ; Load kernel
   mov ah, 0x41
   mov bx, 0x55AA
   mov dl, 0x80
@@ -131,17 +134,16 @@ bits 16
   mov bl, [.mode_bpp]
   jmp .video_mode_loop
 .got_video_mode:
+  mov dl, '5'
   cmp bp, 0xFFFF
-  je .get_mode_info_failed
+  je .error
   mov cx, bp
   mov ax, 0x4F01
   mov di, .mode_info
   int 0x10
+  mov dl, '6'
   cmp ax, 0x004F
-  je .got_mode_info
-.get_mode_info_failed:
-  mov dl, '5'
-  jmp .error
+  jne .error
 .got_mode_info:
   mov bx, bp
   or bx, 0x4000
@@ -149,46 +151,25 @@ bits 16
   int 0x10
   cmp ax, 0x004F
   je .boot
-  mov dl, '6'
+  mov dl, '7'
   jmp .error
-
-.boot:
-  cli
-  lgdt [.gdtr]
-  mov eax, cr0
-  or eax, 1
-  mov cr0, eax
-  jmp 0x08:.protected_mode_init
 
 align 4
 .int13_dap:
   db 0x10
   db 0
-  dw 0x10
+  dw 0x11
   dd 0x00007E00
   dq 1
 
 align 8
 .gdt:
-; null selector
   dw 0
 .gdtr:
   dw 0x17
   dd .gdt
-; code selector
-  dw 0xFFFF
-  dw 0x0000
-  db 0x00
-  db 0x9A
-  db 0xCF
-  db 0x00
-; data selector
-  dw 0xFFFF
-  dw 0x0000
-  db 0x00
-  db 0x92
-  db 0xCF
-  db 0x00
+  dq 0x00209A0000000000
+  dq 0x0000920000000000
 
 .error_msg: db `Error \0`
 
@@ -209,19 +190,64 @@ align 8
   hlt
   jmp .end_print
 
-bits 32
+times 510 - ($-$$) db 0
+dw 0xAA55
+
+.boot:
+  cli
+  lgdt [.gdtr]
+  ; clear PDP and PML4
+  cld
+  mov ax, 0x7000
+  mov es, ax
+  mov di, 0xE000
+  mov edi, 0x7D000
+  mov ecx, 0xC00
+  xor eax, eax
+  rep stosd
+  ; setup basic paging - the lowest 2 MiB initially mapped to both 0x0000000000000000 and 0xFFFF800000000000
+  mov di, 0xD000 ; first entry of PD
+  mov [es:di], dword 0x00000183
+  mov di, 0xE000 ; first entry of PDP
+  mov [es:di], dword 0x0007D003
+  mov di, 0xF000 ; first entry of lower half of PML4
+  mov [es:di], dword 0x0007E003
+  mov di, 0xF800 ; first entry of upper half of PML4
+  mov [es:di], dword 0x0007E003
+  mov di, 0xFFF8 ; last entry of PML4 - set to the PML4 to allow modifying page tables
+  mov [es:di], dword 0x0007F003
+  ; enable PAE and PGE bits
+  mov eax, cr4
+  or eax, 0x000000A0
+  mov cr4, eax
+  ; set cr3 to address of PML4
+  mov eax, 0x7F000
+  mov cr3, eax
+  ; enable long mode
+  mov ecx, 0xC0000080
+  rdmsr
+  or eax, 0x00000100
+  wrmsr
+  mov eax, cr0
+  or eax, 0x80000001
+  mov cr0, eax
+  jmp 0x08:.long_mode_init
+
+bits 64
 
 extern kernel_main
 
-.protected_mode_init:
+.long_mode_init:
   mov ax, 0x10
   mov ds, ax
   mov es, ax
   mov fs, ax
   mov gs, ax
   mov ss, ax
-  call kernel_main
+  mov rax, kernel_main
+  call rax
+.halt:
   hlt
+  jmp .halt
 
-times 510 - ($-$$) db 0
-dw 0xAA55
+times 1024 - ($-$$) db 0
