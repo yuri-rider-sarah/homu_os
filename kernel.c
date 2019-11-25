@@ -119,8 +119,9 @@ void free_page(u64 page) {
 }
 
 u64 page_alloc() {
+    if (page_stack_top == PAGE_STACK_BOTTOM)
+        return NULL;
     return *--page_stack_top;
-    // TODO handle lack of memory
 }
 
 void kernel_main(void) {
