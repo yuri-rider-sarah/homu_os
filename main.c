@@ -18,18 +18,6 @@ void kernel_main(void) {
     framebuffer_init();
     page_alloc_init();
 
-    for (u32 y = 0; y < height; y++) {
-        for (u32 x = 0; x < width; x++) {
-            u8 r = x;
-            u8 g = y;
-            u8 b = 0;
-            u32 pixel = (r >> (8 - rs)) << rp | (g >> (8 - gs)) << gp | (b >> (8 - bs)) << bp;
-            for (u32 i = 0; i < bytes_per_pixel; i++) {
-                fb[y * pitch + x * bytes_per_pixel + i] = (pixel >> 8 * i);
-            }
-        }
-    }
-
     print_string(STR("Address of kernel_main: "));
     print_hex(&kernel_main, 16);
     print_char('\n');

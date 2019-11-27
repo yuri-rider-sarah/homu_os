@@ -1,6 +1,18 @@
 #include "framebuffer.h"
 #include "misc-fixed.h"
 
+static u8 *fb;
+static u16 pitch;
+static u16 width;
+static u16 height;
+static u16 bytes_per_pixel;
+static u8 rs;
+static u8 rp;
+static u8 gs;
+static u8 gp;
+static u8 bs;
+static u8 bp;
+
 static u16 char_width;
 static u16 char_height;
 
