@@ -1,19 +1,21 @@
 OUTPUT_FORMAT(binary)
 
+KERNEL_VMA = 0xFFFFFFFFFFE08000;
+
 SECTIONS {
     . = 0x7C00;
     .boot : AT(0) {
         *(.boot)
     }
-    . = 0xFFFF800000008000;
-    .text : AT(ADDR(.text) - 0xFFFF800000008000 + 0x400) {
+    . = KERNEL_VMA;
+    .text : AT(ADDR(.text) - KERNEL_VMA + SIZEOF(.boot)) {
         *(.text)
         *(.rodata.*)
     }
-    .data : AT(ADDR(.data) - 0xFFFF800000008000 + 0x400) {
+    .data : AT(ADDR(.data) - KERNEL_VMA + SIZEOF(.boot)) {
         *(.data)
     }
-    .bss : AT(ADDR(.bss) - 0xFFFF800000008000 + 0x400) {
+    .bss : AT(ADDR(.bss) - KERNEL_VMA + SIZEOF(.boot)) {
         *(COMMON)
         *(.bss)
     }

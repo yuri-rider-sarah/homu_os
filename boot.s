@@ -221,15 +221,19 @@ dw 0xAA55
   xor eax, eax
   rep stosd
   ; setup basic paging - the lowest 2 MiB initially mapped to both 0x0000000000000000 and 0xFFFF800000000000
+  mov di, 0xDFF8 ; last entry of PD
+  mov [es:di], dword 0x00000183
+  mov di, 0xEFF8 ; last entry of PDPT
+  mov [es:di], dword 0x0007D003
+  mov di, 0xFFF8 ; last entry of PML4
+  mov [es:di], dword 0x0007E003
   mov di, 0xD000 ; first entry of PD
   mov [es:di], dword 0x00000183
-  mov di, 0xE000 ; first entry of PDP
+  mov di, 0xE000 ; first entry of PDPT
   mov [es:di], dword 0x0007D003
-  mov di, 0xF000 ; first entry of lower half of PML4
+  mov di, 0xF000 ; first entry of PML4
   mov [es:di], dword 0x0007E003
-  mov di, 0xF800 ; first entry of upper half of PML4
-  mov [es:di], dword 0x0007E003
-  mov di, 0xFFF8 ; last entry of PML4 - set to the PML4 to allow modifying page tables
+  mov di, 0xF800 ; first entry of lower half of PML4 - set to the PML4 to allow modifying page tables
   mov [es:di], dword 0x0007F003
   ; enable PAE and PGE bits
   mov eax, cr4
@@ -259,8 +263,8 @@ extern kernel_main
   mov fs, ax
   mov gs, ax
   mov ss, ax
-  mov rax, kernel_main
-  call rax
+  add rsp, 0xFFFFFFFFFFE00000
+  call kernel_main
 .halt:
   hlt
   jmp .halt

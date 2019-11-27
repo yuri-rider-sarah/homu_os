@@ -1,12 +1,12 @@
 #include "types.h"
 #include "misc-fixed.h"
 
-#define PTE_PTR(x) ((u64 *)(((u64)x >> 9 & ~0x7) | 0xFFFFFF8000000000))
-#define PDE_PTR(x) ((u64 *)(((u64)x >> 18 & ~0x7) | 0xFFFFFFFFC0000000))
-#define PDPTE_PTR(x) ((u64 *)(((u64)x >> 27 & ~0x7) | 0xFFFFFFFFFFE00000))
-#define PML4E_PTR(x) ((u64 *)(((u64)x >> 36 & ~0x7) | 0xFFFFFFFFFFFFF000))
+#define PTE_PTR(x)   ((u64 *)(((u64)x >>  9 & 0x0000007FFFFFFFF8) | 0xFFFF800000000000))
+#define PDE_PTR(x)   ((u64 *)(((u64)x >> 18 & 0x000000003FFFFFF8) | 0xFFFF804000000000))
+#define PDPTE_PTR(x) ((u64 *)(((u64)x >> 27 & 0x00000000001FFFF8) | 0xFFFF804020000000))
+#define PML4E_PTR(x) ((u64 *)(((u64)x >> 36 & 0x0000000000000FF8) | 0xFFFF804020100000))
 
-#define LOW_MEM_PTR(x) (x | 0xFFFF800000000000)
+#define LOW_MEM_PTR(x) (x | 0xFFFFFFFFFFE00000)
 
 typedef struct String {
     size_t len;
@@ -68,7 +68,7 @@ void print_hex(u64 n, u32 digits) {
     }
 }
 
-#define PAGE_STACK_BOTTOM (u64 *)0xFFFF800040000000
+#define PAGE_STACK_BOTTOM (u64 *)0xFFFFFFFF80000000
 
 static u64 *page_stack_top = PAGE_STACK_BOTTOM;
 static u64 *page_stack_capacity = PAGE_STACK_BOTTOM;
@@ -116,15 +116,21 @@ void free_page(u64 page) {
     } else {
         *page_stack_top++ = page;
     }
+    // TODO handle too much memory
 }
 
 u64 page_alloc() {
     if (page_stack_top == PAGE_STACK_BOTTOM)
-        return NULL;
+        return 0;
     return *--page_stack_top;
 }
 
 void kernel_main(void) {
+    *PDE_PTR(0) = 0;
+    *PDPTE_PTR(0) = 0;
+    *PML4E_PTR(0) = 0;
+    asm volatile ("invlpg 0" : : : "memory");
+
     u32 fb_ptr = *(u32 *)LOW_MEM_PTR(0x0728);
     pitch = *(u16 *)LOW_MEM_PTR(0x0710);
     width = *(u16 *)LOW_MEM_PTR(0x0712);
@@ -137,7 +143,7 @@ void kernel_main(void) {
     bs = *(u8 *)LOW_MEM_PTR(0x0723);
     bp = *(u8 *)LOW_MEM_PTR(0x0724);
 
-    fb = (u8 *)(0xFFFF800080000000 | (fb_ptr & 0x1FFFFF));
+    fb = (u8 *)(0xFFFFFFFF40000000 | (fb_ptr & 0x1FFFFF));
     *PDPTE_PTR(fb) = 0x7C003;
     u64 *fb_pd = PDE_PTR(fb);
     u64 fb_first_page = fb_ptr >> 21;
