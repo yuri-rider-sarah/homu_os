@@ -21,7 +21,6 @@ section .boot
 
 bits 16
 
-  cli
   mov ax, 0
   mov ds, ax
   mov es, ax
@@ -186,6 +185,10 @@ align 8
   dq 0x00209A0000000000
   dq 0x0000920000000000
 
+.idtr:
+  dw 0
+  dd 0
+
 .error_msg: db `Error \0`
 
 ; Halts with error code in dl displayed
@@ -211,6 +214,7 @@ dw 0xAA55
 .boot:
   cli
   lgdt [.gdtr]
+  lidt [.idtr]
   ; clear PDP and PML4
   cld
   mov ax, 0x7000
