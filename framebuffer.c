@@ -35,7 +35,7 @@ void framebuffer_init() {
     char_height = height / 13;
 
     fb = (u8 *)(0xFFFFFFFF40000000 | (fb_ptr & 0x1FFFFF));
-    *PDPTE_PTR(fb) = 0x7C003;
+    *PDPTE_PTR(fb) = 0x7B003;
     u64 *fb_pd = PDE_PTR(fb);
     u64 fb_first_page = fb_ptr >> 21;
     u64 fb_end_page = (fb_ptr + height * pitch + 0x1FFFFF) >> 21;

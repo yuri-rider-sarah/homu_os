@@ -26,7 +26,7 @@ bits 16
   mov ds, ax
   mov es, ax
   mov ss, ax
-  mov sp, 0x7C00
+  mov sp, 0x7000
   push dx
   clc
 
@@ -216,11 +216,16 @@ dw 0xAA55
   mov ax, 0x7000
   mov es, ax
   mov di, 0xE000
-  mov edi, 0x7D000
-  mov ecx, 0xC00
+  mov edi, 0x7C000
+  mov ecx, 0x1000
   xor eax, eax
   rep stosd
-  ; setup basic paging - the lowest 2 MiB initially mapped to both 0x0000000000000000 and 0xFFFF800000000000
+  ; setup basic paging - the lowest 2 MiB initially mapped to both 0x0000000000000000 and 0xFFFFFFFFFFE00000
+  ; and stack bottom mapped to 0xFFFFFFFFFFC00000
+  mov di, 0xCFF8 ; last entry of stack PT
+  mov [es:di], dword 0x00006103
+  mov di, 0xDFF0 ; second to last entry of PD
+  mov [es:di], dword 0x0007C003
   mov di, 0xDFF8 ; last entry of PD
   mov [es:di], dword 0x00000183
   mov di, 0xEFF8 ; last entry of PDPT
@@ -263,7 +268,7 @@ extern kernel_main
   mov fs, ax
   mov gs, ax
   mov ss, ax
-  add rsp, 0xFFFFFFFFFFE00000
+  add rsp, 0xFFFFFFFFFFE00000 - 0x7000
   call kernel_main
 .halt:
   hlt
