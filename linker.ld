@@ -8,14 +8,14 @@ SECTIONS {
         *(.boot)
     }
     . = KERNEL_VMA;
-    .text : AT(ADDR(.text) - KERNEL_VMA + SIZEOF(.boot)) {
+    .text ALIGN(8) : AT(ADDR(.text) - KERNEL_VMA + SIZEOF(.boot)) {
         *(.text)
         *(.rodata.*)
     }
-    .data : AT(ADDR(.data) - KERNEL_VMA + SIZEOF(.boot)) {
+    .data ALIGN(8) : AT(ADDR(.data) - KERNEL_VMA + SIZEOF(.boot)) {
         *(.data)
     }
-    .bss : AT(ADDR(.bss) - KERNEL_VMA + SIZEOF(.boot)) {
+    .bss ALIGN(8) : AT(ADDR(.bss) - KERNEL_VMA + SIZEOF(.boot)) {
         *(COMMON)
         *(.bss)
     }
