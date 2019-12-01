@@ -32,6 +32,8 @@ void kernel_main(void) {
         print_hex(memory_ranges[i].len, 16);
         print_char(' ');
         print_hex(memory_ranges[i].type, 8);
+        print_char(' ');
+        print_hex(memory_ranges[i].attrs, 8);
         print_char('\n');
     }
     print_char('\n');

@@ -72,6 +72,7 @@ detect_memory:
   mov ebx, 0
   mov di, memory_ranges
 .loop:
+  mov [di + 20], dword 1
   mov eax, 0xE820
   mov ecx, 24
   int 0x15

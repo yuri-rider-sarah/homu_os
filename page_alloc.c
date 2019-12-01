@@ -18,7 +18,7 @@ void page_alloc_init(void) {
     u16 memory_ranges_count = *(u16 *)LOW_MEM_PTR(0x08FE) / 24;
     MemoryRegion *memory_ranges = (MemoryRegion *)LOW_MEM_PTR(0x0900);
     for (u16 i = 0; i < memory_ranges_count; i++) {
-        if (memory_ranges[i].type != 1 || memory_ranges[i].base <= 0xFFFFF) // Skip invalid ranges and low memory
+        if (memory_ranges[i].type != 1 || (memory_ranges[i].attrs & 3) != 1 || memory_ranges[i].base <= 0xFFFFF) // Skip invalid ranges and low memory
             continue;
         u64 base_page = (memory_ranges[i].base + 0xFFF) >> 12;
         u64 end_page = (memory_ranges[i].base + memory_ranges[i].len) >> 12;
