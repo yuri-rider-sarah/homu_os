@@ -1,7 +1,7 @@
 TARGET = homu.bin
 AS = nasm
 CC = x86_64-elf-gcc
-CFLAGS = -ffreestanding -mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -O2 -Wall -Wextra
+CFLAGS = -ffreestanding -mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -O2 -Wall -Wextra -Wstrict-prototypes
 LDFLAGS = -ffreestanding -O2 -nostdlib -lgcc
 
 HEADERS = $(wildcard *.h)

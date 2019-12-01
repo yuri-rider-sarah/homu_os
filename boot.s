@@ -1,12 +1,12 @@
 section .boot
 
-%define .controller_info 0x0500
-%define .video_modes_ptr 0x050E
-%define .mode_info 0x0700
-%define .mode_res 0x0712 ; horizontal before vertical
-%define .mode_bpp 0x0719
-%define .memory_ranges_count 0x08FE ; in bytes
-%define .memory_ranges 0x0900
+%define controller_info 0x0500
+%define video_modes_ptr 0x050E
+%define mode_info 0x0700
+%define mode_res 0x0712 ; horizontal before vertical
+%define mode_bpp 0x0719
+%define memory_ranges_count 0x08FE ; in bytes
+%define memory_ranges 0x0900
 
 ; Error codes:
 ; 0 - Long mode not supported
@@ -29,147 +29,148 @@ bits 16
   push dx
   clc
 
-  ; Test long mode
+test_long_mode:
   mov eax, 0x80000000
   cpuid
   cmp eax, 0x80000001
-  jb .no_long_mode
+  jb .fail
   mov eax, 0x80000001
   cpuid
   test edx, 0x20000000
-  jnz .long_mode_available
-.no_long_mode:
+  jnz .end
+.fail:
   mov dl, '0'
-  jmp .error
-.long_mode_available:
+  jmp error
+.end:
 
-  ; Enable A20 line
+enable_a20_line:
   mov ax, 0x2403
   int 0x15
-  jc .int15_failed
+  jc .fail
   test ah, ah
-  jnz .int15_failed
+  jnz .fail
   mov ax, 0x2402
   int 0x15
-  jc .int15_failed
+  jc .fail
   test ah, ah
-  jnz .int15_failed
+  jnz .fail
   cmp al, 0x01
-  je .a20_enabled
+  je .end
   mov ax, 0x2401
   int 0x15
-  jc .int15_failed
+  jc .fail
   test ah, ah
-  jz .a20_enabled
-.int15_failed:
+  jz .end
+.fail:
   mov dl, '1'
-  jmp .error
-.a20_enabled:
+  jmp error
+.end:
 
-  ; Detect memory ranges
-  mov si, .detect_memory_failed
+detect_memory:
+  mov si, .fail
   mov edx, 0x534D4150
   mov ebx, 0
-  mov di, .memory_ranges
-.detect_memory_loop:
+  mov di, memory_ranges
+.loop:
   mov eax, 0xE820
   mov ecx, 24
   int 0x15
-  jnc .int15_no_carry
+  jnc .no_carry
   jmp si
-.int15_no_carry:
+.no_carry:
   cmp eax, 0x534D4150
-  jne .detect_memory_failed
-  mov si, .got_memory
+  jne .fail
+  mov si, .success
   add di, 24
   test ebx, ebx
-  jnz .detect_memory_loop
-.got_memory:
-  sub di, .memory_ranges
-  mov [.memory_ranges_count], di
-  jmp .got_memory_ranges
-.detect_memory_failed:
+  jnz .loop
+.success:
+  sub di, memory_ranges
+  mov [memory_ranges_count], di
+  jmp .end
+.fail:
   mov dl, '2'
-  jmp .error
-.got_memory_ranges:
+  jmp error
+.end:
 
-  ; Load kernel
+load_kernel:
   mov ah, 0x41
   mov bx, 0x55AA
   mov dl, 0x80
   int 0x13
   jnc .int13_supported
   mov dl, '3'
-  jmp .error
+  jmp error
 .int13_supported:
   pop dx
   mov ah, 0x42
-  mov si, .int13_dap
+  mov si, int13_dap
   int 0x13
-  jnc .get_video_modes
+  jnc .end
   mov dl, '4'
-  jmp .error
+  jmp error
+.end:
 
-.get_video_modes:
-  mov [.controller_info], dword "VBE2"
+get_video_modes:
+  mov [controller_info], dword "VBE2"
   mov ax, 0x4F00
-  mov di, .controller_info
+  mov di, controller_info
   int 0x10
   cmp ax, 0x004F
   je .got_controller_info
   mov dl, '5'
-  jmp .error
+  jmp error
 .got_controller_info:
   cld
-  mov si, [.video_modes_ptr]
+  mov si, [video_modes_ptr]
   mov bp, 0xFFFF ; best supported mode
   xor edx, edx ; resolution of best mode - vertical less significant than horizontal
   xor bl, bl ; bpp of best mode
-.video_mode_loop:
+.loop:
   lodsw
   cmp ax, 0xFFFF
   je .got_video_mode
   mov cx, ax
   mov ax, 0x4F01
-  mov di, .mode_info
+  mov di, mode_info
   int 0x10
   cmp ax, 0x004F
-  jne .video_mode_loop
-  test [.mode_info], word 0x0099
-  jz .video_mode_loop
-  mov eax, [.mode_res]
+  jne .loop
+  test [mode_info], word 0x0099
+  jz .loop
+  mov eax, [mode_res]
   ror eax, 16 ; swap horizontal and vertical resolution
   cmp eax, edx
-  jb .video_mode_loop
-  cmp [.mode_bpp], bl
-  jb .video_mode_loop
+  jb .loop
+  cmp [mode_bpp], bl
+  jb .loop
   mov bp, cx
   mov edx, eax
-  mov bl, [.mode_bpp]
-  jmp .video_mode_loop
+  mov bl, [mode_bpp]
+  jmp .loop
 .got_video_mode:
   mov dl, '6'
   cmp bp, 0xFFFF
-  je .error
+  je error
   mov cx, bp
   mov ax, 0x4F01
-  mov di, .mode_info
+  mov di, mode_info
   int 0x10
   mov dl, '7'
   cmp ax, 0x004F
-  jne .error
+  jne error
 .got_mode_info:
   mov bx, bp
   or bx, 0x4000
   mov ax, 0x4F02
   int 0x10
   cmp ax, 0x004F
-  je .boot
+  je boot
   mov dl, '8'
-  jmp .error
+  jmp error
 
 align 4
-.int13_dap:
+int13_dap:
   db 0x10
   db 0
   dw 0x11
@@ -177,44 +178,45 @@ align 4
   dq 1
 
 align 8
-.gdt:
-  dw 0
-.gdtr:
-  dw 0x17
-  dd .gdt
+gdt:
+  dq 0
   dq 0x00209A0000000000
   dq 0x0000920000000000
 
-.idtr:
+gdtr:
+  dw 0x17
+  dd gdt
+
+idtr:
   dw 0
   dd 0
 
-.error_msg: db `Error \0`
+error_msg: db `Error \0`
 
 ; Halts with error code in dl displayed
-.error:
+error:
   cld
-  mov si, .error_msg
+  mov si, error_msg
   mov ah, 0x0E
-.print_loop:
+.loop:
   lodsb
   test al, al
-  jz .end_print
+  jz .end
   int 0x10
-  jmp .print_loop
-.end_print:
+  jmp .loop
+.end:
   mov al, dl
   int 0x10
   hlt
-  jmp .end_print
+  jmp .end
 
 times 510 - ($-$$) db 0
 dw 0xAA55
 
-.boot:
+boot:
   cli
-  lgdt [.gdtr]
-  lidt [.idtr]
+  lgdt [gdtr]
+  lidt [idtr]
   ; clear PDP and PML4
   cld
   mov ax, 0x7000
@@ -259,24 +261,24 @@ dw 0xAA55
   mov eax, cr0
   or eax, 0x80000001
   mov cr0, eax
-  jmp 0x08:.long_mode_init
+  jmp 0x08:long_mode_init
 
 bits 64
 
 extern kernel_main
 
-.lgdt64:
+lgdt64:
   dw 0x17
-  dq .gdt + 0xFFFFFFFFFFE00000
+  dq gdt + 0xFFFFFFFFFFE00000
 
-.long_mode_init:
+long_mode_init:
   mov ax, 0x10
   mov ds, ax
   mov es, ax
   mov fs, ax
   mov gs, ax
   mov ss, ax
-  lgdt [.lgdt64 + 0xFFFFFFFFFFE00000]
+  lgdt [lgdt64 + 0xFFFFFFFFFFE00000]
   add rsp, 0xFFFFFFFFFFE00000 - 0x7000
   call kernel_main
 .halt:

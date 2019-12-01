@@ -13,7 +13,7 @@ typedef struct MemoryRegion {
 static u64 *page_stack_top = PAGE_STACK_BOTTOM;
 static u64 *page_stack_capacity = PAGE_STACK_BOTTOM;
 
-void page_alloc_init() {
+void page_alloc_init(void) {
     u64 *page_stack_pdpte = PDPTE_PTR(PAGE_STACK_BOTTOM);
     u16 memory_ranges_count = *(u16 *)LOW_MEM_PTR(0x08FE) / 24;
     MemoryRegion *memory_ranges = (MemoryRegion *)LOW_MEM_PTR(0x0900);
@@ -55,7 +55,7 @@ void page_alloc_init() {
     // TODO handle no usable memory
 }
 
-u64 page_alloc() {
+u64 page_alloc(void) {
     if (page_stack_top == PAGE_STACK_BOTTOM)
         return 0;
     return *--page_stack_top;

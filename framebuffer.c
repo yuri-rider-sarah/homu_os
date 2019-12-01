@@ -20,7 +20,7 @@ static u16 char_height;
 static u32 cursor_x = 0;
 static u32 cursor_y = 0;
 
-void framebuffer_init() {
+void framebuffer_init(void) {
     u32 fb_ptr = *(u32 *)LOW_MEM_PTR(0x0728);
     pitch = *(u16 *)LOW_MEM_PTR(0x0710);
     width = *(u16 *)LOW_MEM_PTR(0x0712);
