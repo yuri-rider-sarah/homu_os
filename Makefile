@@ -11,8 +11,10 @@ $(TARGET): $(OBJECTS) linker.ld
 	$(CC) $(LDFLAGS) -T linker.ld $(OBJECTS) -o $@
 	truncate -s 516096 $(TARGET) # minimum disk size that works with bochs
 
-boot.o: boot.s
+%.o: %.s
 	$(AS) $< -f elf64 -o $@
+
+interrupt.o: CFLAGS+=-mgeneral-regs-only
 
 %.o: %.c $(HEADERS)
 	$(CC) -c $(CFLAGS) $< -o $@

@@ -1,5 +1,6 @@
 #include "types.h"
 #include "framebuffer.h"
+#include "interrupt.h"
 #include "page_alloc.h"
 
 typedef struct MemoryRegion {
@@ -16,10 +17,11 @@ void kernel_main(void) {
     asm volatile ("invlpg 0" : : : "memory");
 
     framebuffer_init();
+    interrupt_init();
     page_alloc_init();
 
     print_string(STR("Address of kernel_main: "));
-    print_hex(&kernel_main, 16);
+    print_hex((u64)&kernel_main, 16);
     print_char('\n');
     u16 memory_ranges_count = *(u16 *)LOW_MEM_PTR(0x08FE) / 24;
     MemoryRegion *memory_ranges = (MemoryRegion *)LOW_MEM_PTR(0x0900);

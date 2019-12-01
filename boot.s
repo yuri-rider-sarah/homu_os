@@ -225,7 +225,7 @@ dw 0xAA55
   xor eax, eax
   rep stosd
   ; setup basic paging - the lowest 2 MiB initially mapped to both 0x0000000000000000 and 0xFFFFFFFFFFE00000
-  ; and stack bottom mapped to 0xFFFFFFFFFFC00000
+  ; and stack bottom mapped to 0xFFFFFFFFFFE00000
   mov di, 0xCFF8 ; last entry of stack PT
   mov [es:di], dword 0x00006103
   mov di, 0xDFF0 ; second to last entry of PD
@@ -265,6 +265,10 @@ bits 64
 
 extern kernel_main
 
+.lgdt64:
+  dw 0x17
+  dq .gdt + 0xFFFFFFFFFFE00000
+
 .long_mode_init:
   mov ax, 0x10
   mov ds, ax
@@ -272,6 +276,7 @@ extern kernel_main
   mov fs, ax
   mov gs, ax
   mov ss, ax
+  lgdt [.lgdt64 + 0xFFFFFFFFFFE00000]
   add rsp, 0xFFFFFFFFFFE00000 - 0x7000
   call kernel_main
 .halt:

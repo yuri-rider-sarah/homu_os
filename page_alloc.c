@@ -1,3 +1,4 @@
+#include "types.h"
 #include "page_alloc.h"
 
 typedef struct MemoryRegion {

@@ -1,3 +1,4 @@
+#include "types.h"
 #include "framebuffer.h"
 #include "misc-fixed.h"
 
