@@ -10,6 +10,8 @@ typedef struct MemoryRegion {
     u32 attrs;
 } MemoryRegion;
 
+extern void ps2_init(void);
+
 void kernel_main(void) {
     *PDE_PTR(0) = 0;
     *PDPTE_PTR(0) = 0;
@@ -19,6 +21,7 @@ void kernel_main(void) {
     framebuffer_init();
     interrupt_init();
     page_alloc_init();
+    ps2_init();
 
     print_string(STR("Address of kernel_main: "));
     print_hex((u64)&kernel_main, 16);
