@@ -18,7 +18,7 @@ struct IDTR {
     u64 base;
 } __attribute__((packed));
 
-static struct IDTR idtr;
+struct IDTR idtr;
 
 __attribute__((interrupt)) void double_fault_handler(void *frame) {
     print_string(STR("Kernel error: double fault"));
@@ -29,9 +29,10 @@ static void set_idt(u32 i, u64 addr) {
     idt[i] = (struct IDT_Entry){(u16)addr, 0x08, 0x8E00, (u16)(addr >> 16), (u32)(addr >> 32), 0};
 }
 
+extern void int_enable(void);
+
 void interrupt_init(void) {
     set_idt(0x08, (u64)&double_fault_handler);
     idtr = (struct IDTR){sizeof(idt) - 1, (u64)&idt};
-    asm volatile ("lidt (%0)" : : "r"(&idtr));
-    asm volatile ("sti");
+    int_enable();
 }
