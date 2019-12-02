@@ -14,7 +14,7 @@ void kernel_main(void) {
     *PDE_PTR(0) = 0;
     *PDPTE_PTR(0) = 0;
     *PML4E_PTR(0) = 0;
-    asm volatile ("invlpg 0" : : : "memory");
+    asm volatile ("invlpg [0]" : : : "memory");
 
     framebuffer_init();
     interrupt_init();

@@ -17,8 +17,9 @@ int_enable:
   mov al, 0x01
   out 0x21, al
   out 0xA1, al
-  mov al, 0xFB
+  mov al, 0xF9
   out 0x21, al
+  mov al, 0xFF
   out 0xA1, al
   sti
   ret

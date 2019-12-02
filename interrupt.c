@@ -25,6 +25,15 @@ __attribute__((interrupt)) void double_fault_handler(void *frame) {
     asm volatile ("hlt");
 }
 
+__attribute__((interrupt)) void keyboard_irq_handler(void *frame) {
+    u8 code;
+    asm volatile ("in al, 0x60" : "=a"(code));
+    print_string(STR("Scan code received: "));
+    print_hex(code, 2);
+    print_char('\n');
+    asm volatile ("out 0x20, al" : : "a"(0x20));
+}
+
 static void set_idt(u32 i, u64 addr) {
     idt[i] = (struct IDT_Entry){(u16)addr, 0x08, 0x8E00, (u16)(addr >> 16), (u32)(addr >> 32), 0};
 }
@@ -33,6 +42,7 @@ extern void int_enable(void);
 
 void interrupt_init(void) {
     set_idt(0x08, (u64)&double_fault_handler);
+    set_idt(0x21, (u64)&keyboard_irq_handler);
     idtr = (struct IDTR){sizeof(idt) - 1, (u64)&idt};
     int_enable();
 }
