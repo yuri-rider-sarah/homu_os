@@ -231,7 +231,7 @@ boot:
   ; and stack bottom mapped to 0xFFFFFFFFFFE00000
   mov di, 0xCFF8 ; last entry of stack PT
   mov [es:di], dword 0x00006103
-  mov di, 0xDFF0 ; second to last entry of PD
+  mov di, 0xD008 ; second entry of PD
   mov [es:di], dword 0x0007C003
   mov di, 0xDFF8 ; last entry of PD
   mov [es:di], dword 0x00000183
@@ -280,7 +280,7 @@ long_mode_init:
   mov gs, ax
   mov ss, ax
   lgdt [lgdt64 + 0xFFFFFFFFFFE00000]
-  add rsp, 0xFFFFFFFFFFE00000 - 0x7000
+  add rsp, 0xFFFFFFFFC0400000 - 0x7000
   call kernel_main
 .halt:
   hlt
