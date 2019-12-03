@@ -10,7 +10,7 @@ SECTIONS {
     . = KERNEL_VMA;
     .text ALIGN(8) : AT(ADDR(.text) - KERNEL_VMA + SIZEOF(.boot)) {
         *(.text)
-        *(.rodata.*)
+        *(.rodata*)
     }
     .data ALIGN(8) : AT(ADDR(.data) - KERNEL_VMA + SIZEOF(.boot)) {
         *(.data)

@@ -1,7 +1,7 @@
 TARGET = homu.bin
 AS = nasm
 CC = x86_64-elf-gcc
-CFLAGS = -ffreestanding -masm=intel -mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -O2 -Wall -Wextra -Wstrict-prototypes
+CFLAGS = -ffreestanding -masm=intel -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -mno-mmx -mno-sse -mno-sse2 -O2 -Wall -Wextra -Wstrict-prototypes
 LDFLAGS = -ffreestanding -O2 -nostdlib -lgcc
 
 HEADERS = $(wildcard *.h)
@@ -13,8 +13,6 @@ $(TARGET): $(OBJECTS) linker.ld
 
 %.s.o: %.s
 	$(AS) $< -f elf64 -o $@
-
-interrupt.o: CFLAGS+=-mgeneral-regs-only
 
 %.o: %.c $(HEADERS)
 	$(CC) -c $(CFLAGS) $< -o $@

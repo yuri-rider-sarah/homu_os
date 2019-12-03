@@ -1,6 +1,7 @@
 #include "types.h"
 #include "interrupt.h"
 #include "framebuffer.h"
+#include "keyboard.h"
 
 struct IDT_Entry {
     u16 addr0;
@@ -23,15 +24,6 @@ struct IDTR idtr;
 __attribute__((interrupt)) void double_fault_handler(void *frame) {
     print_string(STR("Kernel error: double fault"));
     asm volatile ("hlt");
-}
-
-__attribute__((interrupt)) void keyboard_irq_handler(void *frame) {
-    u8 code;
-    asm volatile ("in al, 0x60" : "=a"(code));
-    print_string(STR("Scan code received: "));
-    print_hex(code, 2);
-    print_char('\n');
-    asm volatile ("out 0x20, al" : : "a"(0x20));
 }
 
 static void set_idt(u32 i, u64 addr) {
