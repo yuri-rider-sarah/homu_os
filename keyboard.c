@@ -63,10 +63,22 @@ enum KeyboardState {
 
 static enum KeyboardState keyboard_state;
 
-void kb_buffer_write(u8 code) {
-    print_string(STR("Received keycode: "));
-    print_hex(code, 2);
-    print_char('\n');
+static u8 kb_buffer = KEY_NONE;
+
+u8 kb_buffer_read(void) {
+    asm volatile ("sti");
+    while (kb_buffer == KEY_NONE) {
+        asm volatile ("hlt" : : : "memory");
+    }
+    asm volatile ("cli");
+    u8 key = kb_buffer;
+    kb_buffer = KEY_NONE;
+    return key;
+}
+
+static void kb_buffer_write(u8 code) {
+    if (kb_buffer == KEY_NONE)
+        kb_buffer = code;
 }
 
 __attribute__((interrupt)) void keyboard_irq_handler(void *frame) {
