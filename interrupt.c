@@ -1,4 +1,5 @@
 #include "types.h"
+#include "error.h"
 #include "interrupt.h"
 #include "framebuffer.h"
 #include "keyboard.h"
@@ -22,8 +23,7 @@ struct IDTR {
 struct IDTR idtr;
 
 __attribute__((interrupt)) void double_fault_handler(void *frame) {
-    print_string(STR("Kernel error: double fault"));
-    asm volatile ("hlt");
+    kernel_error(STR("Double fault"));
 }
 
 static void set_idt(u32 i, u64 addr) {

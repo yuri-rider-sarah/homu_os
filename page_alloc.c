@@ -1,5 +1,6 @@
 #include "types.h"
 #include "page_alloc.h"
+#include "error.h"
 
 typedef struct MemoryRegion {
     u64 base;
@@ -8,7 +9,7 @@ typedef struct MemoryRegion {
     u32 attrs;
 } MemoryRegion;
 
-#define PAGE_STACK_BOTTOM (u64 *)0xFFFFFFFF80000000
+#define PAGE_STACK_BOTTOM ((u64 *)0xFFFFFFFF80000000)
 
 static u64 *page_stack_top = PAGE_STACK_BOTTOM;
 static u64 *page_stack_capacity = PAGE_STACK_BOTTOM;
