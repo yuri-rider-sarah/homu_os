@@ -6,6 +6,4 @@ The following memory ranges are used by the kernel:
   - PDPTE `0x1FF`:
     - PDE `0x001`:
       - PTE `0x000`: `0xFFFFFFFFC0400000` - `0xFFFFFFFFC0400FFF` - stack
-    - PDE `0x1FE`:
-      - PTE `0x000-0x001`: `0xFFFFFFFFFFC00000` - `0xFFFFFFFFFFC01FFF` - EHCI registers
     - PDE `0x1FF`: `0xFFFFFFFFFFE00000` - `0xFFFFFFFFFFFFFFFF` - first 2 MiB of physical memory (includes code)

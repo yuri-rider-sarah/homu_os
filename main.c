@@ -4,7 +4,6 @@
 #include "interrupt.h"
 #include "keyboard.h"
 #include "page_alloc.h"
-#include "usb.h"
 
 extern void ps2_init(void);
 
@@ -27,7 +26,6 @@ void kernel_main(void) {
     framebuffer_init();
     page_alloc_init();
     ps2_init();
-    usb_init();
     interrupt_init();
 
     print_string(STR("HomuOS\n\n"));
