@@ -25,15 +25,13 @@ void kernel_main(void) {
     asm volatile ("invlpg [0]" : : : "memory");
 
     framebuffer_init();
-    interrupt_init();
     page_alloc_init();
     ps2_init();
-    u8 *ehci_registers = usb_init();
+    usb_init();
+    interrupt_init();
 
     print_string(STR("HomuOS\n\n"));
-    print_string(STR("HCIVERSION: "));
-    print_hex(*(u16 *)(ehci_registers + 2), 4);
-    print_string(STR("\nKeyboard test:\n"));
+    print_string(STR("Keyboard test:\n"));
     u8 key;
     while (true) {
         key = kb_buffer_read();

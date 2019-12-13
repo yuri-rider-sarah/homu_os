@@ -2,6 +2,8 @@ extern idtr
 global int_enable
 
 int_enable:
+  ; di contains IRQ mask
+  mov di, 0xF7F9
   lidt [idtr]
   mov al, 0x11
   out 0x20, al
@@ -17,8 +19,8 @@ int_enable:
   mov al, 0x01
   out 0x21, al
   out 0xA1, al
-  mov al, 0xF9
+  mov ax, di
   out 0x21, al
-  mov al, 0xFF
+  shr ax, 8
   out 0xA1, al
   ret
