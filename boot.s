@@ -214,6 +214,7 @@ error:
 .end:
   mov al, dl
   int 0x10
+  cli
   hlt
   jmp .end
 
