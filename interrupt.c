@@ -22,6 +22,13 @@ struct IDTR {
 
 struct IDTR idtr;
 
+__attribute__((interrupt)) void page_fault_handler(void *frame) {
+    u64 cr2;
+    asm volatile ("mov %0, cr2" : "=g"(cr2));
+    print_hex(cr2, 16);
+    kernel_error(STR("Page fault"));
+}
+
 __attribute__((interrupt)) void double_fault_handler(void *frame) {
     kernel_error(STR("Double fault"));
 }
@@ -34,6 +41,7 @@ extern void int_enable(void);
 
 void interrupt_init(void) {
     set_idt(0x08, (u64)&double_fault_handler);
+    set_idt(0x0E, (u64)&page_fault_handler);
     set_idt(0x21, (u64)&keyboard_irq_handler);
     idtr = (struct IDTR){sizeof(idt) - 1, (u64)&idt};
     int_enable();
