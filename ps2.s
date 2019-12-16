@@ -1,11 +1,11 @@
 wait_for_read:
-  mov al, 0x64
+  in al, 0x64
   test al, 0x01
-  jnz wait_for_read
+  jz wait_for_read
   ret
 
 wait_for_write:
-  mov al, 0x64
+  in al, 0x64
   test al, 0x02
   jnz wait_for_write
   ret
