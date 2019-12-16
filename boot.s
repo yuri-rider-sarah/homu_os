@@ -1,10 +1,16 @@
 section .boot
 
+extern kernel_main
+
+global gdtr
+global gdtr32
+
 %define controller_info 0x0500
 %define video_modes_ptr 0x050E
 %define mode_info 0x0700
 %define mode_res 0x0712 ; horizontal before vertical
 %define mode_bpp 0x0719
+%define drive_index 0x08FC
 %define memory_ranges_count 0x08FE ; in bytes
 %define memory_ranges 0x0900
 
@@ -26,7 +32,7 @@ bits 16
   mov es, ax
   mov ss, ax
   mov sp, 0x7000
-  push dx
+  mov [drive_index], dl
   clc
 
 test_long_mode:
@@ -103,7 +109,7 @@ load_kernel:
   mov dl, '3'
   jmp error
 .int13_supported:
-  pop dx
+  mov dl, [drive_index]
   mov ah, 0x42
   mov si, int13_dap
   int 0x13
@@ -184,7 +190,7 @@ gdt:
   dq 0x00209A0000000000
   dq 0x0000920000000000
 
-gdtr:
+gdtr32:
   dw 0x17
   dd gdt
 
@@ -216,7 +222,7 @@ dw 0xAA55
 
 boot:
   cli
-  lgdt [gdtr]
+  lgdt [gdtr32]
   lidt [idtr]
   ; clear PDP and PML4
   cld
@@ -227,7 +233,7 @@ boot:
   mov ecx, 0x1000
   xor eax, eax
   rep stosd
-  ; setup basic paging - the lowest 2 MiB initially mapped to both 0x0000000000000000 and 0xFFFFFFFFFFE00000
+  ; setup basic paging - the lowest 2 MiB mapped to both 0x0000000000000000 and 0xFFFFFFFFFFE00000
   ; and stack bottom mapped to 0xFFFFFFFFFFE00000
   mov di, 0xCFF8 ; last entry of stack PT
   mov [es:di], dword 0x00006103
@@ -266,20 +272,18 @@ boot:
 
 bits 64
 
-extern kernel_main
-
-lgdt64:
+gdtr:
   dw 0x17
   dq gdt + 0xFFFFFFFFFFE00000
 
 long_mode_init:
+  lgdt [gdtr + 0xFFFFFFFFFFE00000]
   mov ax, 0x10
   mov ds, ax
   mov es, ax
   mov fs, ax
   mov gs, ax
   mov ss, ax
-  lgdt [lgdt64 + 0xFFFFFFFFFFE00000]
   add rsp, 0xFFFFFFFFC0400000 - 0x7000
   call kernel_main
 .halt:

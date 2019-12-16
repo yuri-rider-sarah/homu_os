@@ -14,8 +14,8 @@ typedef int32_t i32;
 typedef int64_t i64;
 
 typedef struct String {
-    size_t len;
-    uint8_t *chars;
+    u64 len;
+    u8 *chars;
 } String;
 
 #define STR(s) ((String){sizeof(s) - 1, (uint8_t *)s})
