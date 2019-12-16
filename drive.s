@@ -2,7 +2,7 @@ extern gdtr
 extern gdtr32
 extern idtr
 
-global read_drive_to_buffer
+global int13
 
 %define drive_index 0x08FC
 
@@ -45,11 +45,11 @@ int13_dap:
 
 section .text
 
-; u32 read_drive_to_buffer(u64 start, u16 len)
-read_drive_to_buffer:
+; u32 int13(u8 function, u64 start, u16 len)
+int13:
   ; Setup DAP
-  mov [int13_dap.len], si
-  mov [int13_dap.start], rdi
+  mov [int13_dap.len], dx
+  mov [int13_dap.start], rsi
   ; Enter real mode
   lgdt [gdtr16]
   lidt [idtr16]
@@ -77,7 +77,8 @@ bits 16
   mov fs, ax
   mov gs, ax
   ; Read data from drive
-  mov ah, 0x42
+  shl di, 8
+  mov ax, di
   mov dl, [drive_index]
   mov si, int13_dap - 0xFFFFFFFFFFE00000
   int 0x13
@@ -99,6 +100,7 @@ bits 64
 .long_mode:
   lgdt [gdtr + 0xFFFFFFFFFFE00000]
   lidt [idtr]
+  add rsp, 0xFFFFFFFFC0400000 - 0x7000
   mov dx, 0x10
   mov ss, dx
   mov ds, dx
