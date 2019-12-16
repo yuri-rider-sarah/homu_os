@@ -47,6 +47,8 @@ section .text
 
 ; u32 int13(u8 function, u64 start, u16 len)
 int13:
+  push rbx
+  push rbp
   ; Setup DAP
   mov [int13_dap.len], dx
   mov [int13_dap.start], rsi
@@ -107,5 +109,7 @@ bits 64
   mov es, dx
   mov fs, dx
   mov gs, dx
+  pop rbp
+  pop rbx
   and rax, 1
   ret
