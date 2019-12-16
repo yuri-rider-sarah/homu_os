@@ -57,11 +57,12 @@ enable_a20_line:
   jnz .fail
   mov ax, 0x2402
   int 0x15
-  jc .fail
+  jc .no_2402
   test ah, ah
-  jnz .fail
+  jnz .no_2402
   cmp al, 0x01
   je .end
+.no_2402:
   mov ax, 0x2401
   int 0x15
   jc .fail
