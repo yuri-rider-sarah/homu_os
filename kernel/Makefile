@@ -1,4 +1,4 @@
-TARGET = homu.bin
+TARGET = ../homu.bin
 AS = nasm
 CC = x86_64-elf-gcc
 CFLAGS = -ffreestanding -masm=intel -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -mno-mmx -mno-sse -mno-sse2 -O2 -Wall -Wextra -Wstrict-prototypes

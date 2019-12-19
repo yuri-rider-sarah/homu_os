@@ -19,8 +19,6 @@ u8 chars[105] = {
     '/', '*', '-', '+', '\n', '.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 };
 
-u8 q[4096];
-
 void kernel_main(void) {
     framebuffer_init();
     page_alloc_init();
@@ -29,29 +27,16 @@ void kernel_main(void) {
 
     print_string(STR("HomuOS\n\n"));
 
-    read_drive(0, 1, q);
-    u8 *p = (u8 *)0xFFFFFFFFFFE07C00;
-    u32 passed = 0;
-    for (u32 i = 0; i < 0x1000; i++)
-        if (p[i] == q[i])
-            passed++;
-    print_string(STR("Read test: "));
-    print_hex(passed, 4);
-    print_string(STR("/0x1000 bytes agree\n"));
-
-    for (u32 i = 0; i < 0x1000; i++)
-        q[i] = (u8)i;
-    write_drive(0, 1, q);
-    for (u32 i = 0; i < 0x1000; i++)
-        q[i] = 0xFF;
-    read_drive(0, 1, q);
-    passed = 0;
-    for (u32 i = 0; i < 0x1000; i++)
-        if (q[i] == (u8)i)
-            passed++;
-    print_string(STR("Write/read test: "));
-    print_hex(passed, 4);
-    print_string(STR("/0x1000 bytes agree\n"));
+    u16 x;
+    read_drive(510, 2, &x);
+    print_string(x == 0xAA55 ? STR("Read test passed\n") : STR("Read test not passed\n"));
+    x = 0x0123;
+    write_drive(510, 2, &x);
+    x = 0xFFFF;
+    read_drive(510, 2, &x);
+    print_string(x == 0x0123 ? STR("Write test passed\n") : STR("Write test not passed\n"));
+    x = 0xAA55;
+    write_drive(510, 2, &x);
 
     print_string(STR("Keyboard test:\n"));
     u8 key;

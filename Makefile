@@ -1,3 +1,4 @@
-homu.bin:
-	make -C kernel
-	mv kernel/homu.bin .
+.FORCE:
+
+homu.bin: .FORCE
+	$(MAKE) -C kernel
