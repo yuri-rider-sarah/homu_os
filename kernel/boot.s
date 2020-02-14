@@ -181,7 +181,7 @@ align 4
 int13_dap:
   db 0x10
   db 0
-  dw 0x11
+  dw 0x20
   dd 0x00007E00
   dq 1
 
@@ -219,7 +219,12 @@ error:
   hlt
   jmp .end
 
-times 510 - ($-$$) db 0
+times 0x1F0 - ($-$$) db 0
+
+; HomuFS signature
+dq 0x4000
+dw 0x0000
+db "Homu"
 dw 0xAA55
 
 boot:

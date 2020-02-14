@@ -7,21 +7,20 @@
 #define SECTORS_IN_BUFFER 512
 #define DRIVE_IO_BUFFER ((void *)0xFFFFFFFFFFE40000)
 
-extern u32 int13(u8 function, u64 start, u16 len);
+extern i64 int13(u8 function, u64 start, u16 len);
 
-u32 read_drive(u64 start, u64 len, void *dest) {
+i64 drive_read(u64 start, u64 len, void *dest) {
     u64 sector_start = start / SECTOR_LENGTH; // First sector to read
     u64 sector_len = (start + len + SECTOR_LENGTH - 1) / SECTOR_LENGTH - sector_start; // Number of sectors to read
     u64 offset = start - sector_start * SECTOR_LENGTH; // Offset of `start` from beginning of sector
     if (sector_len > SECTORS_IN_BUFFER)
         kernel_error(STR("`read_drive` called with `len` too large"));
-    if (!int13(0x42, sector_start, sector_len))
-        return 1;
+    RIE(int13(0x42, sector_start, sector_len));
     memcpy(dest, DRIVE_IO_BUFFER + offset, len);
     return 0;
 }
 
-u32 write_drive(u64 start, u64 len, void *src) {
+i64 drive_write(u64 start, u64 len, void *src) {
     u64 sector_start = start / SECTOR_LENGTH;
     u64 sector_end = (start + len + SECTOR_LENGTH - 1) / SECTOR_LENGTH; // Sector after last sector written
     u64 sector_len = sector_end - sector_start;
@@ -31,13 +30,11 @@ u32 write_drive(u64 start, u64 len, void *src) {
         kernel_error(STR("`write_drive` called with `len` too large"));
     // Read first and last sector if necessary
     if (end_offset != 0 && !(sector_len == 1 && offset != 0)) {
-        if (!int13(0x42, sector_end - 1, 1))
-            return 1;
+        RIE(int13(0x42, sector_end - 1, 1));
         memcpy(DRIVE_IO_BUFFER + offset + len, DRIVE_IO_BUFFER + offset + len - (sector_len - 1) * SECTOR_LENGTH, end_offset);
     }
     if (offset != 0)
-        if (!int13(0x42, sector_start, 1))
-            return 1;
+        RIE(int13(0x42, sector_start, 1));
     memcpy(DRIVE_IO_BUFFER + offset, src, len);
-    return !int13(0x43, sector_start, sector_len);
+    return int13(0x43, sector_start, sector_len);
 }
