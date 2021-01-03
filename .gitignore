@@ -1,5 +1,2 @@
 *.o
-fuse/homufs_fuse
-kernel/kernel.bin
-fs_data.bin
 homu.bin

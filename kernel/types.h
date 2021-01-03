@@ -26,8 +26,3 @@ typedef struct String {
 #define PML4E_PTR(x) ((u64 *)(((u64)x >> 36 & 0x0000000000000FF8) | 0xFFFF804020100000))
 
 #define LOW_MEM_PTR(x) (x | 0xFFFFFFFFFFE00000)
-
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
-#define MAX(x, y) ((x) > (y) ? (x) : (y))
-
-#define RIE(x) { i64 _err_ = (x); if (_err_ < 0) return _err_; }

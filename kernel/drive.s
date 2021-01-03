@@ -112,5 +112,4 @@ bits 64
   pop rbp
   pop rbx
   and rax, 1
-  sub rax, 1
   ret
